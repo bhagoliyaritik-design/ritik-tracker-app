@@ -328,7 +328,7 @@ function CalendarTab({ user }: { user: User }) {
   const cols = []; let day = startDate; while (day <= endDate) {
     cols.push(day); day = addDays(day, 1);
   }
-  function dayStatus(day) {
+  function dayStatus(day: Date) {
     const id = format(day, "yyyy-MM-dd");
     const entry = entries.find(e => e.id === id);
     if ((entry?.water || 0) >= 1000 || entry?.fit || entry?.yoga) return "done";
