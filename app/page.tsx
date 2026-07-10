@@ -303,7 +303,7 @@ function AnalyticsTab({ user }: { user: User }) {
 
 // ==== CALENDAR TAB (REAL DATA) ====
 function CalendarTab({ user }: { user: User }) {
-  const [entries, setEntries] = useState([]);
+  const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date());
   const [selected, setSelected] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -314,7 +314,7 @@ function CalendarTab({ user }: { user: User }) {
       setLoading(true);
       const q = collection(db, "trackers", user.uid, "days");
       const querySnapshot = await getDocs(q);
-      let arr = [];
+      let arr: any[] = [];
       querySnapshot.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
       setEntries(arr);
       setLoading(false);
