@@ -6,8 +6,12 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function AnnouncementBanner() {
+  // All hook calls at top, OUTSIDE any if!
+  const [mounted, setMounted] = useState(false);
   const [announcement, setAnnouncement] = useState<{ title?: string, message?: string } | null>(null);
   const [show, setShow] = useState(true);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "announcements", "current"), (snap) => {
@@ -22,6 +26,8 @@ export default function AnnouncementBanner() {
     return () => unsub();
   }, []);
 
+  // Guard for mounted after ALL hooks!
+  if (!mounted) return null;
   if (!announcement?.title || !show) return null;
 
   return (
@@ -30,7 +36,7 @@ export default function AnnouncementBanner() {
         initial={{ y: -80, opacity: 0, scale: 0.98 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: -80, opacity: 0, scale: 0.97 }}
-        transition={{ duration: 0.55, type: "spring", damping: 27, stiffness: 300 }}
+        transition={{ duration: 2, type: "spring", damping: 27, stiffness: 300 }} // For testing, slow fade
         className="fixed top-0 left-0 w-full z-50 flex justify-center"
       >
         <div className="m-2 px-8 py-4 rounded-xl shadow-2xl bg-gradient-to-r from-blue-950 to-indigo-900 border border-blue-400 text-white flex items-center gap-6 max-w-xl w-full">
