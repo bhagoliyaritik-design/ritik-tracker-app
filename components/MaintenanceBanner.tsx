@@ -27,9 +27,8 @@ export default function MaintenanceBanner() {
 
   if (loading) return null;
   if (!isMaintenance) return null;
-  if (isAdmin) return null; // admin kabhi bhi maintenance me lock nahi hoga
+  if (isAdmin) return null; // admin ko allowed
 
-  // Jo non-admin user hai, use yeh dikhai dega, baaki sab band
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center ">
       <div className="bg-yellow-200 rounded-2xl shadow-lg p-10 text-2xl text-black font-bold">
