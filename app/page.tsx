@@ -502,6 +502,8 @@ export default function Home() {
   // Sidebar/tabs layout + active tab renderer
   return (
     <div className="min-h-screen flex bg-[#20223A]">
+        <AnnouncementBanner /> {/* ⬅️ YAHAN ADD KARO */}
+
       {/* Sidebar */}
       <div className="min-h-screen w-[70px] sm:w-[180px] bg-[#151727] flex flex-col py-8 shadow-xl">
         <div className="flex-1 flex flex-col gap-2">
