@@ -15,11 +15,11 @@ import {
   setDoc,
   serverTimestamp,
   query,
-  
 } from "firebase/firestore";
-
 import { auth, db } from "../../src/firebaseConfig";
 import { updateDoc } from "firebase/firestore";
+import { ChatUsersList } from "../../components/ChatUsersList";
+import { AdminChat } from "../../components/AdminChat";
 
 // ---- Config ----
 const ADMIN_EMAIL = "bhagoliyaritik@gmail.com";
@@ -42,6 +42,7 @@ type UserRow = { uid: string; email: string; signupDate?: number | null };
 // ---- Main ----
 export default function AdminPanel() {
   const admin = useAdminCheck();
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
   // Dashboard state
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -188,15 +189,19 @@ export default function AdminPanel() {
   // ACCESS DENIED
   if (admin === false) {
     return (
-      <div className="min-h-screen flex flex-col justify-center items-center bg-black/90 text-white">
-        <div className="bg-red-700/70 p-8 rounded-2xl shadow-2xl flex flex-col gap-3 items-center max-w-xs">
-          <span className="text-5xl mb-1">⛔</span>
-          <span className="text-2xl font-bold mb-1">Access Denied</span>
-          <div>You do not have permission to access Admin Panel.</div>
+      <div className="fixed inset-0 bg-black flex items-center justify-center min-h-screen">
+        <div className="bg-red-900/80 backdrop-blur-xl shadow-2xl rounded-xl p-10 flex flex-col items-center max-w-md w-full border border-red-800">
+          <div className="text-6xl mb-4">⛔</div>
+          <h1 className="text-3xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-lg text-red-200 mb-6 text-center">
+            You do not have permission to access Admin Panel.
+          </p>
           <button
             onClick={() => signOut(auth)}
-            className="mt-4 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold"
-          >Log Out</button>
+            className="px-6 py-2 bg-red-700 hover:bg-red-800 rounded font-semibold text-white transition"
+          >
+            Logout
+          </button>
         </div>
       </div>
     );
@@ -234,22 +239,22 @@ export default function AdminPanel() {
           className="ml-2 px-4 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs"
         >Log Out</button>
       </div>
-          <div className="bg-zinc-900 rounded-xl p-6 mb-7 flex flex-col sm:flex-row gap-4 items-center">
-      <button
-        className="px-6 py-2 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-600"
-        onClick={async ()=>{
-          await updateDoc(doc(db, "settings", "config"), { maintenance: true });
-          alert("Maintenance Enabled! 🚧");
-        }}
-      >🚧 Enable Maintenance Mode</button>
-      <button
-        className="px-6 py-2 rounded-xl bg-green-500 text-black font-bold hover:bg-green-600"
-        onClick={async ()=>{
-          await updateDoc(doc(db, "settings", "config"), { maintenance: false });
-          alert("Maintenance Disabled! ✅");
-        }}
-      >✅ Disable Maintenance Mode</button>
-    </div>
+      <div className="bg-zinc-900 rounded-xl p-6 mb-7 flex flex-col sm:flex-row gap-4 items-center">
+        <button
+          className="px-6 py-2 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-600"
+          onClick={async ()=>{
+            await updateDoc(doc(db, "settings", "config"), { maintenance: true });
+            alert("Maintenance Enabled! 🚧");
+          }}
+        >🚧 Enable Maintenance Mode</button>
+        <button
+          className="px-6 py-2 rounded-xl bg-green-500 text-black font-bold hover:bg-green-600"
+          onClick={async ()=>{
+            await updateDoc(doc(db, "settings", "config"), { maintenance: false });
+            alert("Maintenance Disabled! ✅");
+          }}
+        >✅ Disable Maintenance Mode</button>
+      </div>
       {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-5 mb-8">
         <GlassCard loading={usersLoading} title="Total Users" value={totalUsers} icon="👥" />
@@ -351,6 +356,26 @@ export default function AdminPanel() {
           >{aLoading ? "Publishing..." : "Publish"}</button>
         </div>
       </form>
+      
+      {/* Live Support Chat Section */}
+      <div className="bg-zinc-900 rounded-xl p-5 my-10">
+        <h2 className="text-2xl font-bold mb-3">
+          💬 Support Chats (Live) | Admin Reply
+        </h2>
+
+        <ChatUsersList onSelect={setSelectedChatId} />
+
+        {selectedChatId && (
+          <AdminChat chatId={selectedChatId} />
+        )}
+
+        {!selectedChatId && (
+          <div className="text-gray-400 mt-4">
+            Select any user chat to reply...
+          </div>
+        )}
+      </div>
+
       {/* Card/Glass Animations <style> */}
       <style>{`
         @keyframes fade-in-up { 0% {opacity:0; transform: translateY(30px);} 100%{opacity:1;transform:translateY(0);} }
