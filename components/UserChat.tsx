@@ -11,11 +11,14 @@ import {
   orderBy,
   doc,
   setDoc,
+  getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 
 export default function UserChat({ user }: { user: any }) {
   const [msg, setMsg] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -26,7 +29,12 @@ export default function UserChat({ user }: { user: any }) {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => d.data()));
+      setMessages(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
     });
 
     return () => unsub();
@@ -38,7 +46,6 @@ export default function UserChat({ user }: { user: any }) {
     if (!msg.trim()) return;
 
     try {
-      // Create parent chat document (VERY IMPORTANT)
       await setDoc(
         doc(db, "chats", user.uid),
         {
@@ -50,7 +57,6 @@ export default function UserChat({ user }: { user: any }) {
         { merge: true }
       );
 
-      // Save message
       await addDoc(collection(db, "chats", user.uid, "messages"), {
         from: "user",
         text: msg,
@@ -64,30 +70,71 @@ export default function UserChat({ user }: { user: any }) {
     }
   }
 
-  return (
-    <div className="max-w-md mx-auto p-4 bg-slate-800 rounded-xl">
-      <h2 className="font-bold text-xl mb-2">
-        💬 Live Chat with Support
-      </h2>
+  async function clearChat() {
+    const ok = window.confirm(
+      "Are you sure?\n\nThis will permanently delete your chat history."
+    );
 
-      <div className="h-56 overflow-auto mb-3 bg-black/40 rounded-lg p-2 flex flex-col">
+    if (!ok) return;
+
+    setDeleting(true);
+
+    try {
+      const snap = await getDocs(
+        collection(db, "chats", user.uid, "messages")
+      );
+
+      await Promise.all(
+        snap.docs.map((d) => deleteDoc(d.ref))
+      );
+
+      await deleteDoc(doc(db, "chats", user.uid));
+
+      alert("Chat cleared successfully.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to clear chat.");
+    }
+
+    setDeleting(false);
+  }
+
+  return (
+    <div className="max-w-md mx-auto p-4 bg-slate-800 rounded-xl border border-slate-700">
+
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-bold text-xl">
+          💬 Live Chat with Support
+        </h2>
+
+        <button
+          type="button"
+          onClick={clearChat}
+          disabled={deleting}
+          className="bg-red-600 hover:bg-red-700 disabled:opacity-50 px-3 py-2 rounded-lg text-white font-bold"
+        >
+          {deleting ? "Deleting..." : "🗑 Clear Chat"}
+        </button>
+      </div>
+
+      <div className="h-60 overflow-auto mb-3 bg-black/40 rounded-lg p-3 flex flex-col gap-2">
+
         {messages.length === 0 && (
-          <div className="text-gray-400 text-center mt-4">
+          <div className="text-center text-gray-400 mt-5">
             No messages yet.
           </div>
         )}
 
-        {messages.map((m, i) => (
+        {messages.map((m: any) => (
           <div
-            key={i}
+            key={m.id}
             className={
-              "mb-2 " +
-              (m.from === "admin"
+              m.from === "admin"
                 ? "text-green-400 text-right"
-                : "text-blue-300")
+                : "text-blue-300 text-left"
             }
           >
-            <span>
+            <span className="font-semibold">
               {m.from === "admin"
                 ? "👨‍💼 Admin:"
                 : "🧑 You:"}
@@ -95,9 +142,11 @@ export default function UserChat({ user }: { user: any }) {
             {m.text}
           </div>
         ))}
+
       </div>
 
       <form onSubmit={sendMessage} className="flex gap-2">
+
         <input
           className="flex-1 px-3 py-2 rounded-lg text-black"
           placeholder="Type your message..."
@@ -106,12 +155,14 @@ export default function UserChat({ user }: { user: any }) {
         />
 
         <button
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white font-bold rounded-lg"
+          className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-bold"
           type="submit"
         >
           Send
         </button>
+
       </form>
+
     </div>
   );
 }
