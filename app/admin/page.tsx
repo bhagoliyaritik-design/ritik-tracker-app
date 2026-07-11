@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 
 import { auth, db } from "../../src/firebaseConfig";
+import { updateDoc } from "firebase/firestore";
 
 // ---- Config ----
 const ADMIN_EMAIL = "bhagoliyaritik@gmail.com";
@@ -233,6 +234,22 @@ export default function AdminPanel() {
           className="ml-2 px-4 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs"
         >Log Out</button>
       </div>
+          <div className="bg-zinc-900 rounded-xl p-6 mb-7 flex flex-col sm:flex-row gap-4 items-center">
+      <button
+        className="px-6 py-2 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-600"
+        onClick={async ()=>{
+          await updateDoc(doc(db, "settings", "config"), { maintenance: true });
+          alert("Maintenance Enabled! 🚧");
+        }}
+      >🚧 Enable Maintenance Mode</button>
+      <button
+        className="px-6 py-2 rounded-xl bg-green-500 text-black font-bold hover:bg-green-600"
+        onClick={async ()=>{
+          await updateDoc(doc(db, "settings", "config"), { maintenance: false });
+          alert("Maintenance Disabled! ✅");
+        }}
+      >✅ Disable Maintenance Mode</button>
+    </div>
       {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-5 mb-8">
         <GlassCard loading={usersLoading} title="Total Users" value={totalUsers} icon="👥" />

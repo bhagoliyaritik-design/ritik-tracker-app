@@ -13,6 +13,7 @@ import {
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth } from "date-fns";
 import AnnouncementBanner from "../components/AnnouncementBanner";
+import MaintenanceBanner from "../components/MaintenanceBanner";
 
 // Sidebar Tabs
 const TABS = [
@@ -502,6 +503,8 @@ export default function Home() {
   // Sidebar/tabs layout + active tab renderer
   return (
     <div className="min-h-screen flex bg-[#20223A]">
+        <MaintenanceBanner />
+
         <AnnouncementBanner /> {/* ⬅️ YAHAN ADD KARO */}
 
       {/* Sidebar */}
