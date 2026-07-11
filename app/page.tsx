@@ -14,7 +14,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth } from "date-fns";
 import AnnouncementBanner from "../components/AnnouncementBanner";
 import MaintenanceBanner from "../components/MaintenanceBanner";
-import PushNotificationButton from "../components/PushNotificationButton";
+
 
 // Sidebar Tabs
 const TABS = [
@@ -507,7 +507,7 @@ export default function Home() {
         <MaintenanceBanner />
 
         <AnnouncementBanner /> {/* ⬅️ YAHAN ADD KARO */}
-        <PushNotificationButton />
+      
 
       {/* Sidebar */}
       <div className="min-h-screen w-[70px] sm:w-[180px] bg-[#151727] flex flex-col py-8 shadow-xl">
