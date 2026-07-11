@@ -68,12 +68,24 @@ function AuthPage({ onLogIn }: { onLogIn: () => void }) {
     e.preventDefault(); setLoading(true); setError(''); setInfo('');
     try {
       if (isNew) {
-        await createUserWithEmailAndPassword(auth, email, pass);
-        setInfo("Account created! Login now."); setIsNew(false);
-      } else {
-        await signInWithEmailAndPassword(auth, email, pass);
-        onLogIn();
-      }
+  const userCredential = await createUserWithEmailAndPassword(
+    auth,
+    email,
+    pass
+  );
+
+  await setDoc(doc(db, "users", userCredential.user.uid), {
+    uid: userCredential.user.uid,
+    email: userCredential.user.email,
+    createdAt: serverTimestamp(),
+  });
+
+  setInfo("Account created! Login now.");
+  setIsNew(false);
+} else {
+  await signInWithEmailAndPassword(auth, email, pass);
+  onLogIn();
+}
     } catch (err: any) {
       setError(err.message.replace("Firebase: ", "").replace(".", ""));
     }
