@@ -14,6 +14,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth } from "date-fns";
 import AnnouncementBanner from "../components/AnnouncementBanner";
 import MaintenanceBanner from "../components/MaintenanceBanner";
+import UserChat from "../components/UserChat";
 
 
 // Sidebar Tabs
@@ -23,7 +24,7 @@ const TABS = [
   { key: "analytics", label: "Analytics", icon: "📈" },
   { key: "calendar", label: "Calendar", icon: "📅" },
   { key: "profile", label: "Profile", icon: "👤" },
-  { key: "feedback", label: "Feedback", icon: "💬" },
+  { key: "chat", label: "Live Chat", icon: "💬" },
   { key: "settings", label: "Settings", icon: "⚙️" },
   { key: "info", label: "Info", icon: "ℹ️" }
 ];
@@ -542,8 +543,8 @@ export default function Home() {
         {tab === "profile" && (
           <ProfileTab user={user} />
         )}
-        {tab === "feedback" && (
-          <FeedbackTab user={user} />
+        {tab === "chat" && (
+          <UserChat user={user} />
         )}
         {tab === "settings" && (
           <DangerZoneTab user={user} />
