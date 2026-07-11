@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth } from "date-fns";
+import AnnouncementBanner from "../components/AnnouncementBanner";
 
 // Sidebar Tabs
 const TABS = [
