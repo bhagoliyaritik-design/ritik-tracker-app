@@ -47,17 +47,25 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-
     >
-    <Script
-  async
-  src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4635586046789022"
-  crossOrigin="anonymous"
-  strategy="afterInteractive"
-/>
+      <head>
+        {/* Google AdSense Verification */}
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-4635586046789022"
+        />
+      </head>
 
       <body className="min-h-full flex flex-col">
         {children}
+
+        {/* Google AdSense Script */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4635586046789022"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
