@@ -1,813 +1,1043 @@
-'use client'
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { auth, db } from "../src/firebaseConfig";
-import {
-  onAuthStateChanged, signOut,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  sendPasswordResetEmail, User
-} from "firebase/auth";
-import {
-  doc, setDoc, getDoc, serverTimestamp,
-  collection, getDocs, addDoc, deleteDoc
-} from "firebase/firestore";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth } from "date-fns";
-import AnnouncementBanner from "../components/AnnouncementBanner";
-import MaintenanceBanner from "../components/MaintenanceBanner";
-import UserChat from "../components/UserChat";
+"use client";
+import React, { useState } from "react";
+import { motion, Variants } from "framer-motion";
 
-// Sidebar Tabs Configuration
-const TABS = [
-  { key: "dashboard", label: "Dashboard", icon: "🏡" },
-  { key: "features", label: "Main Features", icon: "⭐" },
-  { key: "analytics", label: "Analytics", icon: "📈" },
-  { key: "calendar", label: "Calendar", icon: "📅" },
-  { key: "profile", label: "Profile", icon: "👤" },
-  { key: "chat", label: "Live Chat", icon: "💬" },
-  { key: "settings", label: "Settings", icon: "⚙️" },
-  { key: "info", label: "Info", icon: "ℹ️" }
+const auroraShapes = [
+  "bg-gradient-to-br from-[#5749E2] via-[#7B80FF] to-[#38FFD5]",
+  "bg-gradient-to-tr from-[#DB28B6] via-[#5B51F3] to-[#6FFFE9]",
+  "bg-gradient-to-b from-[#FA8C33] via-[#745CFF] to-[#55EFCB]",
 ];
 
-// Utility: For date keys (YYYY-MM-DD)
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-}
+const features = [
+  {
+    name: "Habit Tracker",
+    desc: "Build life-changing habits with daily tracker.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#5548ea2d]" />
+        <path d="M13 19l3 3l7-7" stroke="#7c72f2" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    name: "Study Tracker",
+    desc: "Monitor your study sessions & focus streaks.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#43d8b632]" />
+        <path d="M9 25v-12l9-4l9 4v12" stroke="#43d8b6" strokeWidth="2.3" strokeLinejoin="round" />
+        <path d="M18 21v4" stroke="#43d8b6" strokeWidth="2.3" />
+      </svg>
+    ),
+  },
+  {
+    name: "Workout Tracker",
+    desc: "Track workouts & exercise routines easily.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#ff8e5b28]" />
+        <path d="M11 25l14-14M25 25l-14-14" stroke="#ff8e5b" strokeWidth="2.1" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    name: "Water Tracker",
+    desc: "Stay hydrated with smart water tracking.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#4bbad828]" />
+        <path d="M18 8l7 12a7 7 0 0 1-14 0l7-12z" stroke="#4bbad8" strokeWidth="2.1" />
+        <circle cx="18" cy="23" r="1.2" fill="#4bbad8" />
+      </svg>
+    ),
+  },
+  {
+    name: "Sleep Tracker",
+    desc: "Analyze sleep quality and optimize rest.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#82cfff27]" />
+        <path d="M18 28a10 10 0 1 1 6.5-17" stroke="#82cfff" strokeWidth="2.1" />
+        <circle cx="23" cy="13" r="1.2" fill="#82cfff" />
+      </svg>
+    ),
+  },
+  {
+    name: "Yoga Tracker",
+    desc: "Track yoga practice and flexibility growth.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#b469ff22]" />
+        <path d="M18 12v12M13 22l5-10l5 10" stroke="#b469ff" strokeWidth="2.1" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    name: "Calendar",
+    desc: "Visualize habits, routines and events on calendar.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#FFE26626]" />
+        <rect x="10" y="15" width="16" height="11" rx="3" stroke="#ffe066" strokeWidth="2" />
+        <rect x="15" y="11" width="6" height="4" rx="2" stroke="#ffe066" strokeWidth="2" />
+      </svg>
+    ),
+  },
+  {
+    name: "Analytics",
+    desc: "Insightful analytics to optimize your day.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#51eaea22]" />
+        <rect x="10.5" y="22" width="3" height="4" rx="1" fill="#51eaea" />
+        <rect x="16.5" y="17" width="3" height="9" rx="1" fill="#51eaea" />
+        <rect x="22.5" y="12" width="3" height="14" rx="1" fill="#51eaea" />
+      </svg>
+    ),
+  },
+  {
+    name: "Cloud Sync",
+    desc: "Seamless real-time sync on all devices.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#1ae8d6,0.12]" />
+        <path d="M24 22a4 4 0 1 0-7.87-1.11A3.5 3.5 0 1 0 16 25h8a3 3 0 0 0 0-6" stroke="#1ae8d6" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    name: "Support Chat",
+    desc: "Instant support with real team members.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#8986fd25]" />
+        <path d="M12 16v-2a6 6 0 0 1 12 0v2" stroke="#8986fd" strokeWidth="2.1" />
+        <rect x="10" y="16" width="16" height="10" rx="2" stroke="#8986fd" strokeWidth="2" />
+        <circle cx="14" cy="21" r="1" fill="#8986fd" />
+        <circle cx="18" cy="21" r="1" fill="#8986fd" />
+        <circle cx="22" cy="21" r="1" fill="#8986fd" />
+      </svg>
+    ),
+  },
+  {
+    name: "Admin Dashboard",
+    desc: "Powerful controls, announcements & insights.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#ff75981c]" />
+        <path d="M14 26v-8a4 4 0 0 1 8 0v8" stroke="#ff7598" strokeWidth="2.1" />
+        <rect x="12" y="18" width="12" height="8" rx="2" stroke="#ff7598" strokeWidth="2" />
+      </svg>
+    ),
+  },
+  {
+    name: "PWA Support",
+    desc: "Install as an app, seamless offline experience.",
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="12" className="fill-[#ffd64430]" />
+        <path d="M18 22l4-6H14l4 6z" stroke="#ffd644" strokeWidth="2.1" strokeLinejoin="round" />
+        <rect x="8" y="9" width="20" height="18" rx="6" stroke="#ffd644" strokeWidth="2" />
+      </svg>
+    ),
+  },
+];
 
-// Yes/No Button Group Component
-function YesNo({ value, onChange }: { value: boolean | null, onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex gap-3 mt-2">
-      <button className={`px-5 py-1 rounded-full font-bold transition ${value === true ? "bg-green-500 text-white" : "bg-white/10 text-zinc-200 hover:bg-green-500/80 hover:text-white"}`} onClick={() => onChange(true)} type="button">Yes</button>
-      <button className={`px-5 py-1 rounded-full font-bold transition ${value === false ? "bg-red-500 text-white" : "bg-white/10 text-zinc-200 hover:bg-red-500/80 hover:text-white"}`} onClick={() => onChange(false)} type="button">No</button>
-    </div>
-  );
-}
+const testimonials = [
+  {
+    name: "Sakshi Jain",
+    review:
+      "Ritik Tracker keeps all my daily goals and habits in one place. Love the dashboard and analytics. Beautiful design, flawless sync across devices.",
+    emoji: "🌟",
+  },
+  {
+    name: "Aman Patel",
+    review:
+      "The streak system and daily records keep me motivated. Water tracking & analytics are super useful. The best productivity tool I’ve used.",
+    emoji: "💪",
+  },
+  {
+    name: "Priya Gupta",
+    review:
+      "Simple, reliable, and elegant. The cloud sync and PWA support are game changers. Really premium experience on all my devices.",
+    emoji: "🔥",
+  },
+  {
+    name: "Yash Verma",
+    review:
+      "Support is quick and friendly. I love seeing my progress charts and daily improvements. Highly recommended for anyone serious about habits.",
+    emoji: "🚀",
+  },
+];
 
-// Card Wrapper UI Component
-function Card({ title, icon, children }: { title: string, icon: string, children: any }) {
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-lg shadow-lg flex flex-col gap-2 min-h-[95px] mb-2">
-      <div className="flex items-center gap-2 mb-1 text-lg font-semibold text-white">
-        <span>{icon}</span>
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
+const faqs = [
+  {
+    q: "Is Ritik Tracker secure?",
+    a: "Absolutely. Ritik Tracker uses Firebase Authentication, secure cloud, and encrypted storage for every account.",
+  },
+  {
+    q: "Can I access my data offline?",
+    a: "Yes, Ritik Tracker supports offline mode and automatic syncing when you’re back online.",
+  },
+  {
+    q: "Is there a free plan?",
+    a: "Yes, basic features are completely free. Upgrade anytime for premium analytics and admin tools.",
+  },
+  {
+    q: "Does it work on mobile?",
+    a: "Ritik Tracker is fully optimized for mobile, tablet, and desktop—plus installable as a PWA app.",
+  },
+  {
+    q: "How do I contact support?",
+    a: "Use the live support chat anytime, or reach out by email or phone for personal assistance.",
+  },
+];
 
-// Profile Tab Fallback Layout
-function ProfileTab({ user }: { user: User }) {
-  return (
-    <div className="max-w-xl mx-auto pt-10 text-white animate-fadein">
-      <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-6 shadow-2xl">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">👤 Personal Account Profile</h2>
-        <div className="space-y-3">
-          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-            <span className="text-xs text-zinc-400 block">Registered Email</span>
-            <span className="text-md font-mono text-white">{user.email}</span>
-          </div>
-          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-            <span className="text-xs text-zinc-400 block">User Unique ID (UID)</span>
-            <span className="text-xs font-mono text-zinc-300 break-all">{user.uid}</span>
-          </div>
+const statCards = [
+  {
+    value: "1000+",
+    label: "Daily Entries",
+    icon: (
+      <svg width="32" height="32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#7B80FF" strokeWidth="2.5" />
+        <path d="M12 16l3 3l5-6" stroke="#7B80FF" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    accent: "from-[#6657e9] to-[#7B80FF]",
+  },
+  {
+    value: "99.9%",
+    label: "Uptime",
+    icon: (
+      <svg width="32" height="32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#4bbad8" strokeWidth="2.5" />
+        <path d="M16 8v8l6 4" stroke="#4bbad8" strokeWidth="2.1" strokeLinecap="round" />
+      </svg>
+    ),
+    accent: "from-[#10CDEF] to-[#55EFCB]",
+  },
+  {
+    value: "24/7",
+    label: "Cloud Sync",
+    icon: (
+      <svg width="32" height="32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#38FFD5" strokeWidth="2.5" />
+        <path d="M12 22a4 4 0 1 1 8 0H12z" stroke="#38FFD5" strokeWidth="2.1" strokeLinecap="round" />
+      </svg>
+    ),
+    accent: "from-[#51eaea] to-[#38FFD5]",
+  },
+  {
+    value: "Fast",
+    label: "Performance",
+    icon: (
+      <svg width="32" height="32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#ff8e5b" strokeWidth="2.5" />
+        <path d="M16 8v10l7 4" stroke="#ff8e5b" strokeWidth="2.1" strokeLinecap="round" />
+      </svg>
+    ),
+    accent: "from-[#ff8e5b] to-[#fa8c33]",
+  },
+];
+
+const revealVariants: Variants = {
+  initial: { opacity: 0, y: 48 },
+  animate: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.7,
+      type: "spring",
+    },
+  }),
+};
+
+export default function Page() {
+  const [activeFaq, setActiveFaq] = useState<number | null>(0);
+
+  // Aurora BG floating shapes/blur gradients
+  function AuroraBG() {
+    return (
+      <>
+        <div className="fixed inset-0 z-[-10] pointer-events-none">
+          {/* Aurora gradient shapes */}
+          <motion.div
+            initial={{ filter: "blur(120px)", opacity: 0.8, scale: 1 }}
+            animate={{ filter: "blur(120px)", opacity: 1, scale: 1.1 }}
+            transition={{ duration: 1.5, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+            className="absolute -top-32 -left-16 w-[38vw] h-[40vh] bg-gradient-to-br from-[#6e73ff] via-[#ad62ff93] to-[#3affd6] rounded-full blur-[108px] z-[-5] select-none"
+          />
+          <motion.div
+            initial={{ filter: "blur(105px)", opacity: 0.47, scale: 0.96 }}
+            animate={{ filter: "blur(140px)", opacity: 0.42, scale: 1.08 }}
+            transition={{ duration: 2.6, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+            className="absolute bottom-0 right-0 w-[42vw] h-[34vh] bg-gradient-to-tr from-[#fa8c33b2] via-[#52ffe9d7] to-[#7c88ff7c] rounded-full blur-[112px] z-[-5] select-none"
+          />
         </div>
-      </div>
-    </div>
-  );
-}
-
-// AUTHENTICATION COMPONENT
-function AuthPage({ onLogIn }: { onLogIn: (user: User) => void }) {
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
-  const [isNew, setIsNew] = useState(false);
-  const [isReset, setIsReset] = useState(false);
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: any) => {
-    e.preventDefault(); setLoading(true); setError(''); setInfo('');
-    try {
-      if (isNew) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-        await setDoc(doc(db, "users", userCredential.user.uid), {
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          createdAt: serverTimestamp(),
-          totalXp: 0,
-          currentStreak: 0
-        });
-        setInfo("Account created! Logging in...");
-        onLogIn(userCredential.user);
-      } else {
-        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-        onLogIn(userCredential.user);
-      }
-    } catch (err: any) {
-      setError(err.message.replace("Firebase: ", "").replace(".", ""));
-    }
-    setLoading(false);
-  };
-
-  const handleReset = async (e: any) => {
-    e.preventDefault(); setLoading(true); setError(''); setInfo('');
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setInfo('Reset link sent! Please check your email inbox.'); setIsReset(false);
-    } catch (err: any) {
-      setError(err.message.replace("Firebase: ", "").replace(".", ""));
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0F1026] via-[#151636] to-[#0A0B1A] px-4 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse delay-700" />
-      
-      <div className="bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-3xl px-8 py-12 shadow-2xl w-full max-w-md transform transition-all hover:border-white/20">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-black text-white tracking-tighter bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">RITIK TRACKER</h1>
-          <p className="text-zinc-400 text-xs uppercase tracking-widest mt-1 font-semibold">Track Your Progress</p>
-        </div>
-        <p className="text-zinc-300 mb-6 text-sm text-center">
-          {isReset ? "Reset your password" : isNew ? "Create your new account" : "Login with your account"}
-        </p>
-        <form className="flex flex-col gap-4" onSubmit={isReset ? handleReset : handleSubmit}>
-          <input type="email" className="bg-white/5 rounded-xl px-5 py-3.5 text-white outline-none border border-white/10 focus:border-indigo-500 transition-all placeholder:text-zinc-500 text-sm"
-            placeholder="Email address" value={email} onChange={e => { setError(""); setInfo(""); setEmail(e.target.value) }} required autoFocus />
-          {!isReset && (
-            <input type="password" className="bg-white/5 rounded-xl px-5 py-3.5 text-white outline-none border border-white/10 focus:border-indigo-500 transition-all placeholder:text-zinc-500 text-sm"
-              placeholder="Password" value={pass} onChange={e => setPass(e.target.value)} required minLength={6} />
-          )}
-          {error && <div className="text-rose-400 text-center text-xs font-semibold bg-rose-500/10 py-2.5 rounded-xl border border-rose-500/20">{error}</div>}
-          {info && <div className="text-emerald-400 text-center text-xs font-semibold bg-emerald-500/10 py-2.5 rounded-xl border border-emerald-500/20">{info}</div>}
-          <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 text-white rounded-xl font-bold tracking-wide shadow-xl shadow-indigo-500/10 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 disabled:opacity-50 cursor-pointer text-sm" disabled={loading}>
-            {loading ? (isReset ? "Sending..." : isNew ? "Signing up..." : "Logging in...") : isReset ? "Send Reset Link" : isNew ? "Sign Up" : "Login"}
-          </button>
-          <div className="text-zinc-400 mt-4 text-center text-xs flex flex-col gap-2 font-medium">
-            <span>
-              {isReset ? (
-                <span className="underline text-indigo-400 cursor-pointer ml-1" onClick={() => setIsReset(false)}>Back to Login</span>
-              ) : (
-                <>
-                  <span className="underline text-indigo-400 cursor-pointer mr-3" onClick={() => setIsReset(true)}>Forgot Password?</span>
-                  {isNew ? "Already have an account?" : "Don't have an account?"}
-                  <span className="text-indigo-400 underline cursor-pointer ml-1 font-bold" onClick={() => { setIsNew(x => !x); setError(""); setInfo(""); }}>
-                    {isNew ? "Login" : "Sign Up"}
-                  </span>
-                </>
-              )}
-            </span>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ==== Main Features Component ====
-function FeaturesTabMain({ user }: { user: User }) {
-  const [data, setData] = useState({
-    date: todayKey(), water: 0, study: 0, fit: null as boolean|null, yoga: null as boolean|null,
-    mastu: null as boolean|null, momos: null as boolean|null, sleep: "", wake: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [info, setInfo] = useState('');
-  const [hasSaved, setHasSaved] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchTodayRecord = async () => {
-      setLoading(true);
-      try {
-        const ref = doc(db, "trackers", user.uid, "days", data.date);
-        const snap = await getDoc(ref);
-        if (snap.exists()) { 
-          setData(snap.data() as typeof data); 
-          setHasSaved(true); 
-        } else {
-          setHasSaved(false);
-        }
-      } catch {
-        setHasSaved(false);
-      }
-      setLoading(false);
-    }; 
-    fetchTodayRecord();
-  }, [user, data.date]);
-
-  async function saveAll() {
-    if (!user) return;
-    setLoading(true); setInfo('');
-    try {
-      const ref = doc(db, "trackers", user.uid, "days", data.date);
-      await setDoc(ref, { ...data, savedAt: serverTimestamp(), alreadySaved: true });
-      setInfo("Already saved for today. Come back tomorrow 🌟");
-      setHasSaved(true);
-    } catch (err: any) { 
-      setInfo("Failed to save"); 
-    }
-    setLoading(false); setTimeout(() => setInfo(''), 4000);
+      </>
+    );
   }
-  const update = (field: keyof typeof data, value: any) => setData(d => ({ ...d, [field]: value }));
 
-  return (
-    <div className="w-full max-w-2xl px-2 py-1 flex flex-col gap-7 animate-fadein">
-      <div className="grid sm:grid-cols-2 gap-7">
-        <Card title="Water Intake" icon="💧">
-          <div className="flex items-center gap-2">
-            <button onClick={() => update("water", Math.max(data.water - 250, 0))} className="font-bold text-xl px-3 py-1 bg-sky-500/50 rounded hover:bg-sky-400 text-white cursor-pointer">-</button>
-            <span className="text-lg font-mono text-white">{data.water} ml</span>
-            <button onClick={() => update("water", data.water + 250)} className="font-bold text-xl px-3 py-1 bg-blue-500/80 rounded hover:bg-blue-600 text-white cursor-pointer">+</button>
+  function AuroraShapesFloating() {
+    return (
+      <>
+        <motion.div
+          initial={{ y: 0, x: 0, rotate: 0, scale: 1 }}
+          animate={{ y: [0, -16, 0], x: [0, 20, 0], rotate: [0, 6, -3, 0], scale: [1, 1.09, 1] }}
+          transition={{ duration: 11, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+          className="hidden md:block absolute top-7 left-16 w-64 h-44 bg-gradient-to-br from-[#6e73ff93] to-[#3affd688] rounded-[36%] blur-3xl opacity-70 pointer-events-none"
+        ></motion.div>
+        <motion.div
+          initial={{ y: 0, scale: 1, rotate: 0 }}
+          animate={{ y: [0, 30, 0], scale: [1, 1.08, 1], rotate: [0, 12, 0] }}
+          transition={{ duration: 9, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+          className="hidden md:block absolute bottom-36 right-40 w-48 h-44 bg-gradient-to-tl from-[#b16aff67] to-[#37ffd673] rounded-[44%] blur-2xl opacity-60 pointer-events-none"
+        />
+      </>
+    );
+  }
+
+  // Premium Navbar
+  function Navbar() {
+    return (
+      <nav className="sticky top-0 left-0 z-40 w-full flex items-center backdrop-blur-2xl bg-[#181B24E0]/60 shadow-xl border-b border-[#312e48]/40 px-4 sm:px-9 py-2 justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center font-black text-xl md:text-2xl bg-gradient-to-r from-[#6e73ff] via-[#b16aff] to-[#34ffe9] bg-clip-text text-transparent tracking-tight select-none">
+            <svg width={32} height={32} className="mr-2" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="9" fill="#6e73ff" />
+              <path d="M14 22v-8l8 8v-8" stroke="#FFF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Ritik Tracker
           </div>
-        </Card>
-        <Card title="Fitness (Workout)" icon="🏋️">
-          <YesNo value={data.fit} onChange={v => update("fit", v)} />
-        </Card>
-        <Card title="Yoga" icon="🧘‍♂️">
-          <YesNo value={data.yoga} onChange={v => update("yoga", v)} />
-        </Card>
-        <Card title="Momos Eaten" icon="🥟">
-          <YesNo value={data.momos} onChange={v => update("momos", v)} />
-        </Card>
-        <Card title="Masturbation" icon="🙈">
-          <YesNo value={data.mastu} onChange={v => update("mastu", v)} />
-          <span className="block text-xs text-white/50 mt-1">Private 🛡️</span>
-        </Card>
-        <Card title="Study (Lectures)" icon="📚">
-          <div className="flex items-center gap-2">
-            <button onClick={() => update("study", Math.max(data.study - 1, 0))} className="font-bold text-xl px-3 py-1 bg-blue-900/80 rounded hover:bg-blue-600 text-white cursor-pointer">-</button>
-            <span className="text-lg font-mono text-white">{data.study}</span>
-            <button onClick={() => update("study", data.study + 1)} className="font-bold text-xl px-3 py-1 bg-blue-900/80 rounded hover:bg-blue-600 text-white cursor-pointer">+</button>
-          </div>
-        </Card>
-        <Card title="Wake Up Time" icon="⏰">
-          <input type="time" className="rounded bg-white/10 text-white border border-white/10 px-3 py-1 outline-none" value={data.wake} onChange={e => update("wake", e.target.value)} />
-        </Card>
-        <Card title="Sleep Time" icon="🌙">
-          <input type="time" className="rounded bg-white/10 text-white border border-white/10 px-3 py-1 outline-none" value={data.sleep} onChange={e => update("sleep", e.target.value)} />
-        </Card>
-      </div>
-      
-      {/* RESTORED: Exactly matches layout button text parameters from image inputs */}
-      <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center">
-        <button
-          onClick={saveAll}
-          disabled={loading || hasSaved}
-          className={`rounded-full bg-gradient-to-br from-blue-500 to-indigo-700 text-xl font-bold text-white px-8 py-4 shadow-2xl
-          hover:scale-105 hover:from-indigo-700 hover:to-blue-400 transition-all ring-2 ring-blue-300/30 ${hasSaved ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
-          {hasSaved ? "Already Saved for Today" : loading ? "Saving..." : "Save Today's Data"}
-        </button>
-        {hasSaved && <div className="text-[#3b82f6] mt-2 text-center text-sm font-semibold">Come back tomorrow to track again! 😇</div>}
-        {info && <div className="text-green-400 font-bold mt-2 text-center text-lg">{info}</div>}
-      </div>
-    </div>
-  );
-}
-
-// ==== ANALYTICS TAB ====
-function AnalyticsTab({ user }: { user: User }) {
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function getAll() {
-      if (!user) return;
-      setLoading(true);
-      try {
-        const q = collection(db, "trackers", user.uid, "days");
-        const querySnapshot = await getDocs(q);
-        let arr: any[] = [];
-        querySnapshot.forEach(doc => arr.push({id: doc.id, ...doc.data()}));
-        arr = arr.sort((a, b) => a.id.localeCompare(b.id));
-        setHistory(arr);
-      } catch (err) {
-        console.error(err);
-      }
-      setLoading(false);
-    }
-    getAll();
-  }, [user]);
-
-  let streak = 0;
-  history.slice().reverse().forEach((day) => {
-    if ((day.study || 0) > 0) streak++;
-    else return;
-  });
-
-  const today = new Date();
-  const chartData = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(today); d.setDate(today.getDate() - 6 + i);
-    const id = format(d, "yyyy-MM-dd");
-    const entry = history.find(e=>e.id===id);
-    return ({
-      date: id,
-      study: entry?.study ?? 0,
-      utha: entry?.wake || '--',
-      mood: entry?.mood || '--'
-    });
-  });
-
-  return (
-    <div className="max-w-2xl mx-auto pt-6 pb-16 px-2 animate-fadein">
-      <div className="rounded-xl bg-[#2c284c] mb-4 px-5 py-4 text-white shadow">
-        <div className="mb-1"><span className="text-2xl align-middle">🔥</span> <b>Streak: {streak} Day{streak !== 1 ? 's' : ''}</b></div>
-        <ul className="mb-1 text-zinc-200 text-sm space-y-1">
-          {chartData.slice().reverse().map((e, i) => (
-            <li key={i}>{e.date} | Uthna: <b>{e.utha}</b> | Lectures: <b>{e.study}</b> | Mood: <b>{e.mood}</b></li>
-          ))}
+        </div>
+        <ul className="hidden md:flex items-center gap-2 text-sm font-semibold tracking-normal">
+          <li>
+            <a href="#" className="px-4 py-2 rounded-xl transition hover:bg-[#25263b]/50 hover:text-[#7B80FF]">Home</a>
+          </li>
+          <li>
+            <a href="#features" className="px-4 py-2 rounded-xl transition hover:bg-[#25263b]/50 hover:text-[#55EFCB]">Features</a>
+          </li>
+          <li>
+            <a href="#dashboard" className="px-4 py-2 rounded-xl transition hover:bg-[#25263b]/50 hover:text-[#FFF27E]">Dashboard</a>
+          </li>
+          <li>
+            <a href="#analytics" className="px-4 py-2 rounded-xl transition hover:bg-[#25263b]/50 hover:text-[#FA8C33]">Analytics</a>
+          </li>
+          <li>
+            <a href="#faq" className="px-4 py-2 rounded-xl transition hover:bg-[#25263b]/50 hover:text-[#b16aff]">FAQ</a>
+          </li>
+          <li>
+            <a href="#contact" className="px-4 py-2 rounded-xl transition hover:bg-[#25263b]/50 hover:text-[#38FFD5]">Contact</a>
+          </li>
         </ul>
-      </div>
-      <div className="bg-[#252245] rounded-lg p-5 shadow-lg mb-5">
-        <div className="text-white/90 font-bold mb-1 text-[17px]">
-          Last 7 Days <span className="text-blue-300">Progress</span> (Lectures)
-        </div>
-        <ResponsiveContainer width="100%" height={140}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 7" stroke="#444466" />
-            <XAxis dataKey="date" tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false} fontSize={12} />
-            <YAxis tickCount={3} width={20} fontSize={13} />
-            <Tooltip />
-            <Bar dataKey="study" fill="#64f3bd" radius={8} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-// ==== CALENDAR TAB COMPONENT ====
-function CalendarTab({ user }: { user: User }) {
-  const [selectedRecord, setSelectedRecord] = useState<any>(null);
-  const [showRecord, setShowRecord] = useState(false);
-  const [entries, setEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [month, setMonth] = useState(new Date());
-  
-  const currentTodayKey = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-  }, []);
-
-  const [selected, setSelected] = useState(currentTodayKey);
-
-  useEffect(() => {
-    async function getMonthRecords() {
-      if (!user) return;
-      setLoading(true);
-      try {
-        const startStr = format(startOfMonth(month), "yyyy-MM-dd");
-        const endStr = format(endOfMonth(month), "yyyy-MM-dd");
-        
-        const q = collection(db, "trackers", user.uid, "days");
-        const querySnapshot = await getDocs(q);
-        const arr: any[] = [];
-        
-        querySnapshot.forEach(doc => {
-          const id = doc.id;
-          if (id >= startStr && id <= endStr) {
-            arr.push({ id, ...doc.data() });
-          }
-        });
-        setEntries(arr);
-      } catch (error) {
-        console.error("Error fetching month records:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    getMonthRecords();
-  }, [user, month]);
-
-  const openRecord = useCallback(async (date: string) => {
-    setSelected(date);
-    setLoading(true);
-    try {
-      const ref = doc(db, "trackers", user.uid, "days", date);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setSelectedRecord({ id: snap.id, ...snap.data() });
-      } else {
-        setSelectedRecord(null);
-      }
-    } catch (error) {
-      console.error("Error loading document:", error);
-      setSelectedRecord(null);
-    } finally {
-      setLoading(false);
-      setShowRecord(true);
-    }
-  }, [user]);
-
-  const cols = useMemo(() => {
-    const monthStart = startOfMonth(month);
-    const monthEnd = endOfMonth(month);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    
-    const days = [];
-    let currentDay = startDate;
-    while (currentDay <= endDate) {
-      days.push(currentDay);
-      currentDay = addDays(currentDay, 1);
-    }
-    return days;
-  }, [month]);
-
-  const hasRecord = useCallback((day: Date) => {
-    const id = format(day, "yyyy-MM-dd");
-    return entries.some(e => e.id === id);
-  }, [entries]);
-
-  const formatSavedAt = useCallback((savedAt: any) => {
-    if (!savedAt) return "--";
-    try {
-      if (typeof savedAt.toDate === 'function') {
-        return format(savedAt.toDate(), "yyyy-MM-dd HH:mm:ss");
-      }
-      if (savedAt.seconds) {
-        return format(new Date(savedAt.seconds * 1000), "yyyy-MM-dd HH:mm:ss");
-      }
-      return format(new Date(savedAt), "yyyy-MM-dd HH:mm:ss");
-    } catch (e) {
-      return String(savedAt);
-    }
-  }, []);
-
-  const activeDayData = useMemo(() => {
-    return entries.find(e => e.id === selected);
-  }, [entries, selected]);
-
-  return (
-    <div className="max-w-xl mx-auto pt-8 pb-4 px-2 animate-fadein">
-      <h2 className="font-bold text-xl text-white mb-4 tracking-wide">My Progress Calendar</h2>
-      <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl p-5 mb-5 shadow-2xl">
-        <div className="flex text-zinc-200 justify-between items-center mb-4 px-2">
-          <button onClick={() => setMonth(subMonths(month, 1))} className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all font-bold text-blue-400 cursor-pointer">&lt;&lt;</button>
-          <b className="font-mono text-lg text-white tracking-wider">{format(month, "MMMM yyyy")}</b>
-          <button onClick={() => setMonth(addMonths(month, 1))} className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all font-bold text-blue-400 cursor-pointer">&gt;&gt;</button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-3 mt-2 mb-4 justify-items-center">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d =>
-            <div key={d} className="text-center text-xs text-blue-300 font-bold uppercase tracking-wider w-full py-1">{d}</div>
-          )}
-          {cols.map((dt, i) => {
-            const dateStr = format(dt, "yyyy-MM-dd");
-            const isCurrentMonth = isSameMonth(dt, month);
-            const isToday = isSameDay(dateStr, currentTodayKey);
-            const isSelected = isSameDay(dateStr, selected);
-            const hasData = hasRecord(dt);
-
-            return (
-              <button key={i}
-                type="button"
-                onClick={() => openRecord(dateStr)}
-                disabled={loading}
-                className={[
-                  "aspect-square w-9 sm:w-11 text-sm font-semibold rounded-full transition-all outline-none relative flex flex-col items-center justify-center gap-0.5 group",
-                  isCurrentMonth ? "text-white hover:bg-white/10 hover:scale-110 active:scale-95 shadow-sm cursor-pointer" : "text-zinc-500 bg-transparent pointer-events-none opacity-40",
-                  isSelected ? "bg-yellow-500 text-black font-bold shadow-lg hover:bg-yellow-400" : "",
-                  isToday && !isSelected ? "border-2 border-blue-500" : ""
-                ].join(" ")}
-              >
-                <span>{format(dt, "d")}</span>
-                {hasData && (
-                  <span className={`w-1.5 h-1.5 rounded-full absolute bottom-1 transition-colors ${isSelected ? "bg-black" : "bg-green-400 animate-pulse"}`}>●</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 bg-black/40 border border-white/5 p-4 rounded-xl text-zinc-300 text-left backdrop-blur-md">
-          <div className="font-bold text-white text-md mb-2 flex items-center gap-2">
-            <span>📅</span> {selected} {selected === currentTodayKey && <span className="text-xs bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full font-normal">Today</span>}
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-              <span className="text-xs text-zinc-400 block">Wake Up</span>
-              <span className="font-semibold text-white">{activeDayData?.wake || "--"}</span>
-            </div>
-            <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-              <span className="text-xs text-zinc-400 block">Lectures</span>
-              <span className="font-semibold text-white">{activeDayData?.study ?? "--"}</span>
-            </div>
-            <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-              <span className="text-xs text-zinc-400 block">Water</span>
-              <span className="font-semibold text-white">{activeDayData?.water ? `${activeDayData.water} ml` : "--"}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {showRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" onClick={() => setShowRecord(false)} />
-          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-gradient-to-br from-[#26294d] to-[#1a1b36] border border-white/15 p-6 shadow-2xl backdrop-blur-2xl transition-all max-h-[90vh] flex flex-col animate-fadein">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <span>📅</span> Details for {selected}
-              </h3>
-              <button onClick={() => setShowRecord(false)} className="rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition-all active:scale-95 cursor-pointer">✕</button>
-            </div>
-
-            <div className="overflow-y-auto pr-1 flex-1 space-y-3 pb-2">
-              {selectedRecord ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">💧</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Water Intake</span>
-                      <span className="text-md font-bold text-white">{selectedRecord.water ?? 0} ml</span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">📚</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Study Lectures</span>
-                      <span className="text-md font-bold text-white">{selectedRecord.study ?? 0} Chapters</span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">🏋️</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Workout Done</span>
-                      <span className={`text-md font-bold ${selectedRecord.fit === true ? "text-green-400" : selectedRecord.fit === false ? "text-red-400" : "text-zinc-400"}`}>
-                        {selectedRecord.fit === true ? "Yes ✅" : selectedRecord.fit === false ? "No ❌" : "--"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">🧘</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Yoga Session</span>
-                      <span className={`text-md font-bold ${selectedRecord.yoga === true ? "text-green-400" : selectedRecord.yoga === false ? "text-red-400" : "text-zinc-400"}`}>
-                        {selectedRecord.yoga === true ? "Yes ✅" : selectedRecord.yoga === false ? "No ❌" : "--"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">🙈</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Masturbation</span>
-                      <span className={`text-md font-bold ${selectedRecord.mastu === true ? "text-red-400" : selectedRecord.mastu === false ? "text-green-400" : "text-zinc-400"}`}>
-                        {selectedRecord.mastu === true ? "Yes 💦" : selectedRecord.mastu === false ? "No 🛡️" : "--"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">🥟</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Momos Eaten</span>
-                      <span className={`text-md font-bold ${selectedRecord.momos === true ? "text-yellow-400" : "text-zinc-400"}`}>
-                        {selectedRecord.momos === true ? "Yes 🥟" : selectedRecord.momos === false ? "No" : "--"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">⏰</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Wake Up Time</span>
-                      <span className="text-md font-bold text-white">{selectedRecord.wake || "--:--"}</span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-2xl">🌙</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Sleep Time</span>
-                      <span className="text-md font-bold text-white">{selectedRecord.sleep || "--:--"}</span>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3 sm:col-span-2">
-                    <span className="text-2xl">🕒</span>
-                    <div>
-                      <span className="text-xs text-zinc-400 block">Saved Time Stamp</span>
-                      <span className="text-sm font-mono text-zinc-300">{formatSavedAt(selectedRecord.savedAt)}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                  <span className="text-5xl mb-4 animate-bounce">📂</span>
-                  <h4 className="text-xl font-bold text-white mb-1">No Record Available</h4>
-                  <p className="text-zinc-400 text-sm max-w-xs">No tracker data was saved for this day.</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-white/10 flex justify-end">
-              <button type="button" onClick={() => setShowRecord(false)} className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-sm font-medium text-white shadow-lg hover:from-blue-600 hover:to-indigo-700 transition-all active:scale-95 cursor-pointer">
-                Close View
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ==== FEEDBACK TAB ====
-function FeedbackTab({ user }: { user: User }) {
-  const [val, setVal] = useState(""); const [ok, setOk] = useState(false); const [err, setErr] = useState("");
-  async function send(e: any) { e.preventDefault(); setErr(""); setOk(false);
-    if (val.length < 5) { setErr("Too short!"); return; }
-    try {
-      await addDoc(collection(db, "feedback"), { user: user.email, val, time: Date.now() });
-      setOk(true); setVal("");
-    } catch { setErr("Network error!") }
-  }
-  return (
-    <div className="py-14 max-w-xl mx-auto px-4 animate-fadein">
-      <h2 className="text-white font-bold text-2xl mb-5">💬 Feedback</h2>
-      <form onSubmit={send} className="flex flex-col gap-5">
-        <textarea className="rounded-xl bg-white/5 border border-white/10 text-white px-5 py-3 outline-none focus:border-blue-400 transition min-h-[120px]"
-          placeholder="Share feedback, ideas, bugs..." value={val} onChange={e => setVal(e.target.value)} minLength={5} required />
-        {err && <div className="text-red-400 text-sm">{err}</div>}
-        {ok && <div className="text-green-400 text-sm">Thank you for the feedback!</div>}
-        <button type="submit" className="w-fit mx-auto px-8 py-2 bg-indigo-700 text-white rounded-xl font-bold hover:bg-blue-700 transition cursor-pointer">Send</button>
-      </form>
-    </div>
-  );
-}
-
-// ==== DANGER ZONE / FACTORY RESET ====
-function DangerZoneTab({ user }: { user: User }) {
-  const [confirm, setConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState("");
-  
-  async function handleDelete() {
-    setDeleting(true); setErr("");
-    try {
-      const daysSnap = await getDocs(collection(db, "trackers", user.uid, "days"));
-      await Promise.all(daysSnap.docs.map(docu => deleteDoc(docu.ref)));
-      setDone(true);
-      setConfirm(false);
-    } catch (e) { setErr("Error! Try again or contact support."); setDone(false); }
-    setDeleting(false);
+        <div className="flex items-center">
+  <a
+    href="https://ritik-tracker-app.vercel.app/"
+    className="rounded-xl px-6 py-2.5 bg-gradient-to-r from-[#6e73ff] via-[#7B80FF] to-[#38FFD5] text-white text-sm font-bold shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300"
+  >
+    🚀 Get Started
+  </a>
+</div>
+      </nav>
+    );
   }
 
-  return (
-    <div className="py-10 flex flex-col items-center max-w-xl mx-auto px-4 animate-fadein">
-      <div className="p-6 bg-red-900/20 rounded-xl mb-6 text-center w-full max-w-md shadow-lg">
-        <div className="text-xl text-red-400 font-bold mb-5 text-left">Danger Zone</div>
-        <div className="mb-5 text-white/80 text-center max-w-sm mx-auto">
-          <b className="text-md block mb-2">Clear All Data / Factory Reset</b>
-          <span className="text-sm text-zinc-300 block">
-            This will <span className="font-bold text-red-400">delete all your tracker data permanently</span>. This cannot be undone!
+  // Hero Section
+  function HeroSection() {
+    return (
+      <section className="relative flex flex-col-reverse md:flex-row items-center justify-between gap-4 md:gap-12 min-h-[80vh] pt-8 md:pt-10 pb-12" id="hero">
+        <div className="w-full md:w-1/2 flex flex-col gap-5">
+          <motion.h1
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={revealVariants}
+            className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight bg-gradient-to-br from-[#6e73ff] via-[#b16aff] to-[#38FFD5] bg-clip-text text-transparent"
+          >
+            Track Every Day.<br />
+            <span className="opacity-90">Improve Every Day.</span>
+          </motion.h1>
+          <motion.p
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={revealVariants}
+            custom={1}
+            className="text-lg md:text-xl text-[#dfdfefb5] max-w-xl tracking-normal font-medium"
+          >
+            Ritik Tracker is your modern productivity OS for daily habits, study, fitness, sleep, water, and more &mdash; in a blazing fast, cloud-synced dashboard. Start tracking, analyzing, and improving every single day.
+          </motion.p>
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={revealVariants}
+            custom={2}
+            className="flex gap-3 mt-2"
+          >
+            <a
+  href="https://ritik-tracker-app.vercel.app/"
+  className="..."
+>
+  🚀 Get Started
+</a>
+            
+          </motion.div>
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, type: "spring" }}
+          className="w-full md:w-1/2 flex items-center justify-center h-[400px] md:h-[460px]"
+        >
+          <HeroDashboardPreview />
+        </motion.div>
+      </section>
+    );
+  }
+
+  // Hero Dashboard Preview (beautiful glass card dashboard mockup)
+  function HeroDashboardPreview() {
+    return (
+      <motion.div
+        initial={{ opacity: 0.75, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.2 }}
+        className="relative w-full max-w-xl h-full flex flex-col rounded-2xl border border-[#383a4c]/30 shadow-[0_6px_64px_0_#7b80ff1a] bg-[#191b23fc] backdrop-blur-md glass overflow-hidden select-none"
+      >
+        <div className="flex items-center gap-2 px-7 pt-7 pb-2 bg-gradient-to-br from-[#242634] to-transparent">
+          <span className="w-3 h-3 rounded-full bg-[#7b80ff]"></span>
+          <span className="w-3 h-3 rounded-full bg-[#43f7d9]"></span>
+          <span className="w-3 h-3 rounded-full bg-[#fa8c33]"></span>
+        </div>
+        <div className="p-5 pb-0 flex flex-col gap-4">
+          <div className="flex gap-3 items-center">
+            <span className="bg-[#38FFD6]/10 border border-[#38FFD6]/30 text-xs rounded-full px-3 py-1 text-[#38FFD6] font-semibold">Streak: 34 Days</span>
+            <span className="bg-[#b16aff]/10 border border-[#ad62ff]/30 text-xs rounded-full px-3 py-1 text-[#b16aff] font-semibold">Water: 2200ml</span>
+            <span className="bg-[#FF8C33]/10 border border-[#FF8C33]/30 text-xs rounded-full px-3 py-1 text-[#FF8C33] font-semibold">Sleep: 7.2h</span>
+          </div>
+          <div className="flex gap-6">
+            <div className="flex flex-col items-center">
+              <div className="bg-[#6e73ff]/20 rounded-2xl p-2 mb-2 border border-[#6e73ff]/30">
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+                  <rect width="36" height="36" rx="12" fill="#6e73ff22" />
+                  <path d="M13 19l3 3l7-7" stroke="#7c72f2" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"></path>
+                </svg>
+              </div>
+              <span className="text-xs text-[#b6c8f7] font-semibold">Habits</span>
+              <span className="text-base font-bold text-[#7B80FF]">6/7</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="bg-[#38ffd5]/20 rounded-2xl p-2 mb-2 border border-[#38FFD5]/30">
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+                  <rect width="36" height="36" rx="12" fill="#38ffd516"></rect>
+                  <path d="M18 8l7 12a7 7 0 0 1-14 0l7-12z" stroke="#38ffd5" strokeWidth="2.1"></path>
+                  <circle cx="18" cy="23" r="1.2" fill="#38ffd5"></circle>
+                </svg>
+              </div>
+              <span className="text-xs text-[#74f7e7] font-semibold">Water</span>
+              <span className="text-base font-bold text-[#38FFD5]">2.2L</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="bg-[#fa8c33]/20 rounded-2xl p-2 mb-2 border border-[#fa8c33]/30">
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+                  <rect width="36" height="36" rx="12" fill="#fa8c3312"></rect>
+                  <path d="M18 12v12M13 22l5-10l5 10" stroke="#fa8c33" strokeWidth="2.1"></path>
+                </svg>
+              </div>
+              <span className="text-xs text-[#ffc995] font-semibold">Sleep</span>
+              <span className="text-base font-bold text-[#FA8C33]">7.2h</span>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="w-full h-[60px] bg-gradient-to-r from-[#6e73ff99] via-[#b16aff55] to-[#38FFD566] rounded-xl flex items-center px-4 gap-4 glass border border-[#38FFD5]/15 shadow-inner shadow-[#7B80FF]/5">
+              <span className="text-[#cccfee] font-bold">Today&apos;s Goals:</span>
+              <span className="px-2 py-1 bg-[#38FFD5]/10 border border-[#38FFD5]/30 rounded-lg text-[#38FFD5] text-xs font-semibold">Read 10 pages</span>
+              <span className="px-2 py-1 bg-[#b16aff]/10 border border-[#ad62ff]/30 rounded-lg text-[#b16aff] text-xs font-semibold">30 min Yoga</span>
+              <span className="px-2 py-1 bg-[#FA8C33]/10 border border-[#fa8c33]/30 rounded-lg text-[#FA8C33] text-xs font-semibold">Drink 2L Water</span>
+            </div>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 w-full py-3 px-6 flex items-center gap-2 bg-gradient-to-t from-[#191b23de] to-transparent">
+          <span className="text-[#7B80FF] font-semibold text-xs">Sync Status: </span>
+          <span className="flex items-center gap-1 text-[#38FFD5] text-xs font-semibold">
+            <svg width="16" height="16" fill="none"><circle cx="8" cy="8" r="6" stroke="#38FFD6" strokeWidth="1.8" /></svg>
+            Cloud Synced
           </span>
+          <span className="ml-auto text-[#b16aff] text-xs font-semibold">Streak: <span className="font-bold text-[#f5eaff]">34</span></span>
         </div>
-        <button className="px-8 py-2 rounded-full bg-red-600 text-white font-bold shadow-lg hover:bg-red-800 transition cursor-pointer flex items-center justify-center gap-2 mx-auto"
-          onClick={() => setConfirm(true)} disabled={deleting}>
-          🗑 Clear All My Data
-        </button>
-      </div>
-      {confirm && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-8 w-full max-w-[350px] shadow-lg border border-red-200 flex flex-col gap-5 text-center animate-fadein">
-            <div className="text-xl font-bold text-red-600">Are you SURE?</div>
-            <div className="text-zinc-900">This will delete <b>all</b> your data for all time, for this account. You CANNOT undo this action!</div>
-            {err && <div className="text-red-700 font-bold text-xs">{err}</div>}
-            <div className="flex gap-4 justify-center mt-2">
-              <button className="bg-zinc-300 text-zinc-800 px-6 py-2 rounded-full font-bold hover:bg-zinc-400 cursor-pointer" onClick={() => setConfirm(false)} disabled={deleting}>Cancel</button>
-              <button className="bg-red-600 text-white px-6 py-2 rounded-full font-bold hover:bg-red-700 cursor-pointer" disabled={deleting} onClick={handleDelete}>Delete Everything</button>
-            </div>
-            {deleting && <div className="text-zinc-700 text-xs mt-2">Deleting...</div>}
-          </div>
-        </div>
-      )}
-      {done && (
-        <div className="mt-6 text-green-400 font-bold text-lg text-center">All your data deleted! You can start fresh now 🚀</div>
-      )}
-    </div>
-  );
-}
+      </motion.div>
+    );
+  }
 
-// === LOADING ANIMATION ===
-function LoadingScreen() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#16192c]">
-      <span className="text-xl text-white/60 animate-pulse">Loading...</span>
-    </div>
-  );
-}
-
-// ==== MAIN APP ROUTER ====
-export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [tab, setTab] = useState("features");
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => {
-      setUser(u); setAuthChecked(true);
-    });
-    return () => unsub();
-  }, []);
-
-  if (!authChecked) return <LoadingScreen />;
-  if (!user) return <AuthPage onLogIn={(u) => setUser(u)} />;
-
-  return (
-    <div className="min-h-screen flex flex-col bg-[#20223A]">
-      <MaintenanceBanner />
-      <AnnouncementBanner />
-      
-      <div className="flex flex-1 min-h-0">
-        {/* Sidebar */}
-        <div className="w-[70px] sm:w-[180px] bg-[#151727] flex flex-col py-8 shadow-xl border-r border-white/5">
-          <div className="flex-1 flex flex-col gap-2">
-            {TABS.map(t => (
-              <button key={t.key}
-                className={`flex items-center gap-3 px-2 py-3 text-lg font-bold rounded-md transition cursor-pointer
-                 ${t.key === tab ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white" : "text-zinc-400 hover:bg-[#22242d] hover:text-white"}`}
-                onClick={() => setTab(t.key)}
+  // Trusted By Section
+  function TrustedBySection() {
+    return (
+      <section className="max-w-6xl mx-auto my-12" id="stats">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+        >
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
+            {statCards.map((card, i) => (
+              <motion.div
+                key={card.label}
+                className={`group flex-1 min-w-[180px] transition glass rounded-2xl px-6 py-6 border border-[#6e73ff1c] shadow-lg bg-gradient-to-br ${card.accent} bg-opacity-20 backdrop-blur-md hover:-translate-y-1.5 hover:shadow-2xl hover:scale-105`}
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.7, type: "spring" }}
               >
-                <span className="ml-3 sm:ml-4 inline-block">{t.icon}</span>
-                <span className="hidden sm:inline text-sm tracking-wide">{t.label}</span>
-              </button>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="scale-110">{card.icon}</span>
+                  <span className="ml-2 text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-tr from-white/90 to-[#7B80FF]">{card.value}</span>
+                </div>
+                <span className="text-[#c8d0fa] font-semibold text-md">{card.label}</span>
+              </motion.div>
             ))}
           </div>
-          <button onClick={() => signOut(auth)} className="mt-12 mb-2 mx-2 sm:mx-4 py-2 bg-red-600 rounded-xl text-white font-medium hover:bg-red-700 transition cursor-pointer text-sm">Logout</button>
+        </motion.div>
+      </section>
+    );
+  }
+
+  // Features Section
+  function FeaturesSection() {
+    return (
+      <section className="max-w-6xl mx-auto py-20" id="features">
+        <div className="mb-6 text-center">
+          <motion.h2
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={revealVariants}
+            className="text-3xl md:text-4xl font-extrabold bg-gradient-to-tr from-[#b16aff] via-[#6e73ff] to-[#38FFD5] bg-clip-text text-transparent mb-2"
+          >
+            All-in-one Productivity Platform
+          </motion.h2>
+          <motion.p
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            custom={1}
+            variants={revealVariants}
+            className="text-lg text-[#c3cbf7af] max-w-2xl mx-auto font-medium"
+          >
+            Everything you need to track, improve, and analyze your daily life. Designed for speed, clarity, and growth.
+          </motion.p>
         </div>
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7 mt-12">
+          {features.map((f, i) => (
+            <motion.div
+              key={f.name}
+              className="group rounded-2xl bg-[#191b23eb] border border-[#37398e2c] p-5 shadow-lg glass backdrop-blur-md transition-all hover:scale-105 hover:z-10 focus-within:scale-105 hover:shadow-2xl focus-within:shadow-2xl"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.06, duration: 0.45, type: "spring" }}
+              tabIndex={0}
+            >
+              <div className="mb-3 scale-110 drop-shadow-lg group-hover:scale-125 transition-transform">{f.icon}</div>
+              <h3 className="font-bold text-lg mb-1 text-[#fff]">{f.name}</h3>
+              <p className="text-[#b7c3fa] text-sm leading-relaxed font-medium">{f.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
-        {/* Primary Main Content Viewport */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {tab === "dashboard" && (
-            <div className="pt-10 text-white font-bold text-2xl text-center">Welcome, {user.email}</div>
-          )}
-          {tab === "features" && (
-            <FeaturesTabMain user={user} />
-          )}
-          {tab === "analytics" && (
-            <AnalyticsTab user={user} />
-          )}
-          {tab === "calendar" && (
-            <CalendarTab user={user} />
-          )}
-          {tab === "profile" && (
-            <ProfileTab user={user} />
-          )}
-          {tab === "chat" && (
-            <UserChat user={user} />
-          )}
-          {tab === "settings" && (
-            <DangerZoneTab user={user} />
-          )}
-          {tab === "info" && (
-            <div className="max-w-3xl mx-auto mt-10">
-              <div className="bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl text-white animate-fadein">
-                <h1 className="text-4xl font-extrabold text-center mb-2 flex items-center justify-center gap-2">
-                  🧑‍💻 Developer Information
-                </h1>
-                <p className="text-center text-zinc-400 text-sm mb-8">
-                  Built with ❤️ using Next.js + Firebase
-                </p>
-
-                <div className="space-y-4">
-                  <div className="bg-white/5 rounded-2xl p-5 border border-white/5 shadow-inner">
-                    <h2 className="text-blue-400 text-lg font-bold mb-2 flex items-center gap-2">👑 Developer</h2>
-                    <p className="text-base font-medium">Name: <span className="text-white font-semibold">Ritik Bhagoliya</span></p>
-                    <p className="text-sm mt-3 leading-relaxed text-zinc-300">
-                      <span className="font-bold text-zinc-400">Roles:</span><br />
-                      • THE CEO<br />
-                      • THE FOUNDER<br />
-                      • THE CODER<br />
-                      • THE DEVELOPER
-                    </p>
+  // Dashboard Showcase Section
+  function DashboardShowcase() {
+    return (
+      <section className="max-w-6xl mx-auto py-16" id="dashboard">
+        <motion.h2
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#B16AFF] to-[#38FFD5] bg-clip-text text-transparent mb-6"
+        >
+          Real Dashboard Experience
+        </motion.h2>
+        <motion.div
+          initial={{ opacity: 0.7, y: 24, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, type: "spring" }}
+          className="w-full flex items-center justify-center"
+        >
+          <div className="w-full max-w-3xl rounded-3xl overflow-hidden border-[1.5px] border-[#7B80FF] bg-gradient-to-br from-[#1c1e2bce] to-[#202032d8] shadow-[0_8px_80px_0_#7b80ff18] glass backdrop-blur-[7px]">
+            {/* Dashboard Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#35376e]/30">
+              <span className="font-bold text-lg bg-gradient-to-r from-[#7B80FF] to-[#38FFD5] bg-clip-text text-transparent tracking-tight">Dashboard</span>
+              <span className="rounded-full px-3 py-1 text-xs text-[#38FFD5] border border-[#38FFD5]/40 bg-[#38ffd523]/15 font-semibold">Cloud Sync: ON</span>
+            </div>
+            {/* Dashboard main grid */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <div className="text-[#ffe066] font-semibold text-sm mb-2">Habits Today</div>
+                <div className="flex gap-3">
+                  <div className="rounded-xl px-4 py-3 bg-[#7B80FF]/10 border border-[#7B80FF]/30 backdrop-blur">
+                    <span className="font-bold text-2xl text-[#7B80FF]">✔️ 5</span>
+                    <span className="block text-xs text-[#bec0f2]">Completed</span>
                   </div>
-
-                  <div className="bg-white/5 rounded-2xl p-5 border border-white/5 shadow-inner">
-                    <h2 className="text-green-400 text-lg font-bold mb-2 flex items-center gap-2">📧 Contact</h2>
-                    <a href="mailto:bhagoliyajitendra@gmail.com" className="text-blue-400 hover:underline font-mono text-sm break-all">
-                      bhagoliyajitendra@gmail.com
-                    </a>
+                  <div className="rounded-xl px-4 py-3 bg-[#FA8C33]/10 border border-[#FA8C33]/30">
+                    <span className="font-bold text-2xl text-[#FA8C33]">2</span>
+                    <span className="block text-xs text-[#fac399]">Pending</span>
                   </div>
-
-                  <div className="bg-white/5 rounded-2xl p-5 border border-white/5 shadow-inner">
-                    <h2 className="text-red-400 text-lg font-bold mb-2 flex items-center gap-2">▶️ YouTube Channel</h2>
-                    <a href="https://youtube.com/@minddecoded-b8v?si=dVjWKjUhZGmGPr9u" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm font-medium">
-                      Mind Decoded
-                    </a>
-                  </div>
-                </div>
-
-                <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-zinc-500 font-mono tracking-wider">
-                  <p>© {new Date().getFullYear()} Ritik Tracker</p>
-                  <p className="mt-1 text-zinc-400 font-sans font-semibold">Designed & Developed by Ritik Bhagoliya</p>
                 </div>
               </div>
+              <div>
+                <div className="text-[#7B80FF] font-semibold text-sm mb-2">Water Intake</div>
+                <div className="relative w-full rounded-lg h-9 bg-[#38FFD5]/10 border border-[#38FFD5]/30 overflow-hidden">
+                  <div className="absolute top-0 left-0 h-full bg-[#38FFD5]/90 transition-all rounded-l-lg" style={{ width: "70%" }} />
+                  <span className="relative z-10 text-[#222445] font-bold pl-4">1.8L / 2.5L</span>
+                </div>
+                <div className="flex justify-between mt-1 text-xs text-[#bafdf3]">
+                  <span className="font-semibold">Goal</span>
+                  <span>2.5L</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[#FA8C33] font-semibold text-sm mb-2">Study Time</div>
+                <div className="flex items-center gap-6">
+                  <span className="text-3xl font-extrabold text-[#fa8c33]">2.2h</span>
+                  <div className="w-32 h-2 rounded-full bg-[#fa8c33]/15">
+                    <div className="h-2 bg-[#fa8c33] rounded-full" style={{ width: "55%" }} />
+                  </div>
+                </div>
+                <div className="mt-1 text-xs text-[#fac399]">Goal: 4h</div>
+              </div>
+              <div>
+                <div className="text-[#b16aff] font-semibold text-sm mb-2">Sleep Duration</div>
+                <div className="flex items-center gap-6">
+                  <span className="text-3xl font-extrabold text-[#b16aff]">7.0h</span>
+                  <div className="w-32 h-2 rounded-full bg-[#b16aff]/15">
+                    <div className="h-2 bg-[#b16aff] rounded-full" style={{ width: "82%" }} />
+                  </div>
+                </div>
+                <div className="mt-1 text-xs text-[#edc8ff]">Target: 8h</div>
+              </div>
             </div>
-          )}
+          </div>
+        </motion.div>
+      </section>
+    );
+  }
+
+  // Analytics Preview Section
+  function AnalyticsPreviewSection() {
+    return (
+      <section className="max-w-6xl mx-auto py-14" id="analytics">
+        <motion.h2
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#38FFD5] to-[#FA8C33] bg-clip-text text-transparent mb-7"
+        >
+          Analytics & Progress
+        </motion.h2>
+        <div className="grid md:grid-cols-2 gap-8 justify-items-center">
+          {/* Circular progress */}
+          <motion.div
+            initial={{ opacity: 0, y: 36 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="bg-[#191b23e6] glass border border-[#38FFD5]/15 rounded-3xl p-8 flex flex-col items-center shadow-lg relative"
+          >
+            <div className="relative">
+              {/* CSS Circular Chart */}
+              <svg width="124" height="124">
+                <circle
+                  cx="62"
+                  cy="62"
+                  r="51"
+                  stroke="#232740"
+                  strokeWidth="19"
+                  fill="none"
+                />
+                <circle
+                  cx="62"
+                  cy="62"
+                  r="51"
+                  stroke="#7B80FF"
+                  strokeWidth="19"
+                  fill="none"
+                  strokeDasharray={Math.PI * 2 * 51}
+                  strokeDashoffset={Math.PI * 2 * 51 * 0.14}
+                  strokeLinecap="round"
+                  style={{ transition: "stroke-dashoffset 1.8s ease" }}
+                />
+              </svg>
+              <span className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-3xl font-extrabold text-[#7B80FF]">
+                86%
+              </span>
+            </div>
+            <span className="text-lg font-semibold text-[#7B80FF] mt-2">Weekly Habit Completion</span>
+          </motion.div>
+          {/* Progress bars/ charts */}
+          <motion.div
+            initial={{ opacity: 0, y: 36 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="bg-[#191b23e6] glass border border-[#7B80FF]/15 rounded-3xl p-8 shadow-lg w-full max-w-md"
+          >
+            <div className="mb-6">
+              <span className="font-semibold text-[#FA8C33]">Study Progress (hrs)</span>
+              <div className="flex gap-2 mt-1 items-end h-20">
+                {[1.3, 3.2, 2.9, 3.8, 2.2, 2.6, 4.1].map((v, i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div
+                      className="w-6 rounded-md bg-gradient-to-t from-[#b16aff66] via-[#7B80FF99] to-[#38FFD5CC] hover:scale-110 transition"
+                      style={{ height: `${20 + v * 16}px` }}
+                    />
+                    <span className="text-xs text-[#b6c8f7] mt-1">{['M','T','W','T','F','S','S'][i]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <span className="font-semibold text-[#38FFD5]">Workout Streak</span>
+              <div className="flex gap-1.5 mt-2">
+                {[true, true, true, false, true, false, true].map((act, i) => (
+                  <span
+                    key={i}
+                    className={`w-6 h-2 rounded-full ${act ? "bg-gradient-to-r from-[#38ffd5] to-[#7B80FF]" : "bg-[#363a4f]"}`}
+                  ></span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="font-semibold text-[#b16aff]">Monthly Growth</span>
+              <div className="w-full bg-[#b16aff22] rounded-full h-2 mt-1 relative">
+                <div className="bg-gradient-to-r from-[#b16aff] to-[#7B80FF] h-2 rounded-full" style={{ width: "66%" }}></div>
+                <span className="absolute -top-6 right-0 font-extrabold text-[#b16aff]">+66%</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </section>
+    );
+  }
+
+  // Why Ritik Tracker Section
+  function WhyRitikTrackerSection() {
+    return (
+      <section className="max-w-6xl mx-auto py-20">
+        <motion.h2
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#B16AFF] to-[#38FFD5] bg-clip-text text-transparent mb-9"
+        >
+          Why Choose Ritik Tracker?
+        </motion.h2>
+        <div className="grid md:grid-cols-3 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="rounded-2xl glass bg-[#1d1e28f7] border border-[#7B80FF]/18 p-6 shadow-xl flex flex-col gap-4 hover:scale-105 transition"
+          >
+            <div className="bg-gradient-to-tr from-[#38FFD5] to-[#7B80FF] rounded-xl p-3 w-12 h-12 mb-2 flex items-center justify-center shadow-lg">
+              <svg width={28} height={28} fill="none"><path d="M5 22l8-8 8 8" stroke="#191b23" strokeWidth="2.1" strokeLinecap="round" /></svg>
+            </div>
+            <h3 className="text-lg font-bold text-[#fff]">Unmatched Simplicity</h3>
+            <p className="text-[#c3cbf7af] font-medium">Zero clutter. Everything organized. One seamless dashboard for all routines.</p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 42 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.06 }}
+            className="rounded-2xl glass bg-[#1d1e28f7] border border-[#B16AFF]/18 p-6 shadow-xl flex flex-col gap-4 hover:scale-105 transition"
+          >
+            <div className="bg-gradient-to-tr from-[#b16aff] to-[#7B80FF] rounded-xl p-3 w-12 h-12 mb-2 flex items-center justify-center shadow-lg">
+              <svg width={28} height={28} fill="none"><circle cx="14" cy="14" r="10" stroke="#fff" strokeWidth="2.1" /><path d="M14 9v5l4 2" stroke="#fff" strokeWidth="2.1" /></svg>
+            </div>
+            <h3 className="text-lg font-bold text-[#fff]">Pro-level Analytics</h3>
+            <p className="text-[#c3cbf7af] font-medium">Advance charts, stats, streaks and records. See real growth, not just numbers.</p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 56 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.12 }}
+            className="rounded-2xl glass bg-[#1d1e28f7] border border-[#38FFD5]/18 p-6 shadow-xl flex flex-col gap-4 hover:scale-105 transition"
+          >
+            <div className="bg-gradient-to-tr from-[#FA8C33] to-[#7B80FF] rounded-xl p-3 w-12 h-12 mb-2 flex items-center justify-center shadow-lg">
+              <svg width={28} height={28} fill="none"><path d="M6 18v-6a8 8 0 0 1 16 0v6" stroke="#fff" strokeWidth="2.1" strokeLinecap="round" /></svg>
+            </div>
+            <h3 className="text-lg font-bold text-[#fff]">Always Synced & Secure</h3>
+            <p className="text-[#c3cbf7af] font-medium">Realtime sync, cloud backup, offline support, and full data privacy.</p>
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
+
+  // How It Works Section
+  function HowItWorksSection() {
+    return (
+      <section className="max-w-5xl mx-auto py-16">
+        <motion.h2
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#38FFD5] to-[#FA8C33] bg-clip-text text-transparent mb-9"
+        >
+          How Ritik Tracker Works
+        </motion.h2>
+        <div className="flex flex-col md:flex-row gap-6 md:gap-10 justify-center items-center">
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.01 }}
+            className="flex flex-col items-center gap-2 bg-[#181B24ea] glass border border-[#38FFD5]/12 rounded-2xl px-7 py-8 shadow-md hover:scale-105 transition"
+          >
+            <span className="text-2xl font-bold text-[#7B80FF]">1</span>
+            <span className="text-lg font-semibold text-white">Create Account</span>
+            <span className="text-[#b7c3fa] text-sm">Sign up securely with email or Google.</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.04 }}
+            className="flex flex-col items-center gap-2 bg-[#181B24ea] glass border border-[#7B80FF]/12 rounded-2xl px-7 py-8 shadow-md hover:scale-105 transition"
+          >
+            <span className="text-2xl font-bold text-[#38FFD5]">2</span>
+            <span className="text-lg font-semibold text-white">Track Activities</span>
+            <span className="text-[#b7c3fa] text-sm">Log habits, study, workouts, sleep, water, and more.</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.07 }}
+            className="flex flex-col items-center gap-2 bg-[#181B24ea] glass border border-[#b16aff]/12 rounded-2xl px-7 py-8 shadow-md hover:scale-105 transition"
+          >
+            <span className="text-2xl font-bold text-[#b16aff]">3</span>
+            <span className="text-lg font-semibold text-white">View Analytics</span>
+            <span className="text-[#b7c3fa] text-sm">See daily, weekly, and monthly insights and charts.</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="flex flex-col items-center gap-2 bg-[#181B24ea] glass border border-[#fac399]/10 rounded-2xl px-7 py-8 shadow-md hover:scale-105 transition"
+          >
+            <span className="text-2xl font-bold text-[#FA8C33]">4</span>
+            <span className="text-lg font-semibold text-white">Improve Daily</span>
+            <span className="text-[#b7c3fa] text-sm">Build improvement with streaks and consistent action.</span>
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
+
+  // Testimonials Section
+  function TestimonialsSection() {
+    return (
+      <section className="max-w-6xl mx-auto py-16">
+        <motion.h2
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#B16AFF] to-[#38FFD5] bg-clip-text text-transparent mb-9"
+        >
+          User Testimonials
+        </motion.h2>
+        <div className="grid md:grid-cols-2 gap-8">
+          {testimonials.map((t, i) => (
+            <motion.div
+              key={t.name}
+              initial={{ opacity: 0, scale: 0.93, y: 32 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.62, type: "spring" }}
+              className="rounded-2xl glass bg-[#181B24e6] border border-[#7B80FF]/18 p-7 shadow-xl flex flex-col gap-2 hover:scale-105 transition"
+            >
+              <span className="text-3xl mb-1">{t.emoji}</span>
+              <span className="text-lg font-semibold text-[#7B80FF]">{t.name}</span>
+              <p className="text-[#c3cbf7af] text-base font-medium mt-1 leading-relaxed">{t.review}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // FAQ Accordion Section
+  function FAQSection() {
+    return (
+      <section className="max-w-4xl mx-auto py-16" id="faq">
+        <motion.h2
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#B16AFF] to-[#38FFD5] bg-clip-text text-transparent mb-7"
+        >
+          Frequently Asked Questions
+        </motion.h2>
+        <div className="rounded-2xl bg-[#191b23f2] glass border border-[#7B80FF]/13 shadow-lg p-6">
+          {faqs.map((f, i) => (
+            <motion.div
+              key={f.q}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.06, duration: 0.53 }}
+              className={`border-b border-[#2324524c] last:border-none py-3 cursor-pointer transition`}
+            >
+              <button
+                onClick={() => setActiveFaq(activeFaq === i ? null : i)}
+                className="flex items-center font-bold text-md md:text-lg text-[#7B80FF] group w-full transition"
+                aria-expanded={activeFaq === i}
+              >
+                <span className="flex-1 text-left">{f.q}</span>
+                <motion.span
+                  className="ml-3"
+                  animate={{ rotate: activeFaq === i ? 90 : 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <svg width={24} height={24} viewBox="0 0 20 20"><path d="M6 8l4 4 4-4" stroke="#7B80FF" strokeWidth="1.6" fill="none" strokeLinecap="round"/></svg>
+                </motion.span>
+              </button>
+              <motion.div
+                initial={false}
+                animate={{ height: activeFaq === i ? "auto" : 0, opacity: activeFaq === i ? 1 : 0 }}
+                transition={{ duration: 0.32 }}
+                className={`overflow-hidden text-[#b6c8f7] font-medium text-md pr-11`}
+                style={{ marginTop: activeFaq === i ? 8 : 0 }}
+              >
+                {activeFaq === i && <div>{f.a}</div>}
+              </motion.div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // Contact Section
+  function ContactSection() {
+    return (
+      <section className="max-w-4xl mx-auto py-20" id="contact">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={revealVariants}
+          className=""
+        >
+          <h2 className="text-3xl md:text-4xl font-extrabold text-center bg-gradient-to-tr from-[#7B80FF] via-[#B16AFF] to-[#38FFD5] bg-clip-text text-transparent mb-6">
+            Contact
+          </h2>
+          <div className="flex flex-col md:flex-row items-center gap-10 justify-center mt-6">
+            <div className="flex flex-col gap-4 bg-[#181B24ea] glass rounded-2xl px-7 py-7 border border-[#7B80FF]/15 shadow-lg min-w-[220px]">
+              <span className="font-bold text-lg text-[#7B80FF]">Founder</span>
+              <span className="text-base text-white font-medium">Ritik Bhagoliya</span>
+            </div>
+            <div className="flex flex-col gap-4 bg-[#181B24ea] glass rounded-2xl px-7 py-7 border border-[#38FFD5]/15 shadow-lg min-w-[220px]">
+              <span className="font-bold text-lg text-[#38FFD5]">Phone</span>
+              <span className="text-base text-white font-medium">+91 7415006800</span>
+            </div>
+            <div className="flex flex-col gap-4 bg-[#181B24ea] glass rounded-2xl px-7 py-7 border border-[#FA8C33]/15 shadow-lg min-w-[220px]">
+              <span className="font-bold text-lg text-[#FA8C33]">Email</span>
+              <span className="text-base text-white font-medium">bhagoliyaritik@gmail.com</span>
+            </div>
+            <div className="flex flex-col gap-4 bg-[#181B24ea] glass rounded-2xl px-7 py-7 border border-[#b16aff]/15 shadow-lg min-w-[220px]">
+              <span className="font-bold text-lg text-[#b16aff]">Location</span>
+              <span className="text-base text-white font-medium">Indore, Madhya Pradesh, India</span>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+    );
+  }
+
+  // Footer
+  function FooterSection() {
+    return (
+      <footer className="mt-12 px-4 md:px-0 border-t border-[#363a4f]/40 pt-8 pb-6 bg-[#181B24d8] shadow-sm">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-6">
+          <div className="flex flex-col gap-3 md:gap-4">
+            <div className="font-black text-xl bg-gradient-to-r from-[#7B80FF] via-[#B16AFF] to-[#38FFD5] bg-clip-text text-transparent">Ritik Tracker</div>
+            <div className="text-xs text-[#b6c8f7]/70">
+              Made with <span className="text-pink-400">&#10084;&#65039;</span> by Ritik Bhagoliya
+            </div>
+            <div className="text-xs text-[#b6c8f7]/80">
+              Copyright © 2026 Ritik Tracker
+            </div>
+          </div>
+          <div className="flex flex-row gap-8 md:gap-14 items-center text-[15px] font-medium">
+            <a href="#" className="hover:text-[#7B80FF] transition">Home</a>
+            <a href="#features" className="hover:text-[#38FFD5] transition">Features</a>
+            <a href="#faq" className="hover:text-[#FA8C33] transition">FAQ</a>
+            <a href="#contact" className="hover:text-[#b16aff] transition">Contact</a>
+            <a href="/privacy" className="hover:text-[#b7c3fa] transition">Privacy Policy</a>
+            <a href="/terms" className="hover:text-[#b7c3fa] transition">
+  Terms &amp; Conditions
+</a>
+            <a href="#" className="hover:text-[#7B80FF] transition">Support</a>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
+  // SEO Head
+  React.useEffect(() => {
+    document.title = "Ritik Tracker – Track Every Day. Improve Every Day.";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        "content",
+        "Ritik Tracker is a modern productivity platform for tracking habits, study, workouts, sleep, water, goals and more. Premium cloud sync, analytics, streaks, PWA and beautiful dashboard."
+      );
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "description";
+      meta.content =
+        "Ritik Tracker is a modern productivity platform for tracking habits, study, workouts, sleep, water, goals and more. Premium cloud sync, analytics, streaks, PWA and beautiful dashboard.";
+      document.head.appendChild(meta);
+    }
+  }, []);
+
+  return (
+    <div className="relative font-sans min-h-screen bg-[#181B24] text-white overflow-x-hidden">
+      <AuroraBG />
+      <AuroraShapesFloating />
+      <Navbar />
+      <main>
+        <HeroSection />
+        <TrustedBySection />
+        <FeaturesSection />
+        <DashboardShowcase />
+        <AnalyticsPreviewSection />
+        <WhyRitikTrackerSection />
+        <HowItWorksSection />
+        <TestimonialsSection />
+        <FAQSection />
+        <ContactSection />
+      </main>
+      <FooterSection />
     </div>
   );
 }
