@@ -333,11 +333,11 @@ export default function Page() {
         </ul>
         <div className="flex items-center">
   <a
-    href="https://ritik-tracker-app.vercel.app/"
-    className="rounded-xl px-6 py-2.5 bg-gradient-to-r from-[#6e73ff] via-[#7B80FF] to-[#38FFD5] text-white text-sm font-bold shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300"
-  >
-    🚀 Get Started
-  </a>
+  href="/app"
+  className="rounded-xl px-6 py-2.5 bg-gradient-to-r from-[#6e73ff] via-[#7B80FF] to-[#38FFD5] text-white text-sm font-bold shadow-xl hover:scale-105 hover:shadow-2xl transition-all duration-300"
+>
+  🚀 Get Started
+</a>
 </div>
       </nav>
     );
