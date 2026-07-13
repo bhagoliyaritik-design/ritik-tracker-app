@@ -376,9 +376,9 @@ export default function Page() {
             custom={2}
             className="flex gap-3 mt-2"
           >
-            <a
-  href="https://ritik-tracker-app.vercel.app/"
-  className="..."
+           <a
+  href="/app"
+  className="rounded-full px-7 py-3 text-lg font-bold bg-gradient-to-tr from-[#b16aff] via-[#6e73ff] to-[#43f7d9] shadow-xl text-white hover:scale-105 hover:shadow-2xl focus:ring-2 focus:ring-[#38FFD5]/40 transition duration-150"
 >
   🚀 Get Started
 </a>
