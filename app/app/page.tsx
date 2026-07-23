@@ -799,6 +799,14 @@ export default function Home() {
                   </div>
                 </div>
 
+                <div className="mt-4 bg-white/5 rounded-2xl p-5 border border-white/5 shadow-inner">
+                    <h2 className="text-red-400 text-lg font-bold mb-2 flex items-center gap-2">▶️ Ritik Chat Ai Made by Ritik Bhagoliya</h2>
+                    <a href="https://ritik-ai.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm font-medium">
+                      Ritik Chat AI 
+                    </a>
+                  </div>
+                
+
                 <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-zinc-500 font-mono tracking-wider">
                   <p>© {new Date().getFullYear()} Ritik Tracker</p>
                   <p className="mt-1 text-zinc-400 font-sans font-semibold">Designed & Developed by Ritik Bhagoliya</p>
